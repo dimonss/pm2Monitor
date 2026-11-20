@@ -1,0 +1,10 @@
+{
+  "name": "pm2-web-monitor",
+  "version": "1.0.0",
+  "description": "Self-hosted PM2 Web Dashboard for HomeServer",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

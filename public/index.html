@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PM2 Monitor — HomeServer</title>
+  <link rel="icon" type="image/png" href="/pm2.png" />
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #238636;
+      --green-text: #3fb950;
+      --red: #da3633;
+      --red-text: #f85149;
+      --yellow: #d29922;
+      --btn-bg: #21262d;
+      --btn-hover: #30363d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .container { max-width: 1280px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo {
+      background: linear-gradient(135deg, #7928ca, #00d8ff);
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 15px; color: #fff;
+    }
+    .brand h1 { font-size: 20px; font-weight: 600; }
+    .brand span { font-size: 13px; color: var(--muted); }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    button {
+      background: var(--btn-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover { background: var(--btn-hover); border-color: #8b949e; }
+    button.primary { background: var(--green); border-color: rgba(240,246,252,0.1); color: #fff; }
+    button.primary:hover { background: #2ea043; }
+    button.danger { color: var(--red-text); }
+    button.danger:hover { background: rgba(218,54,51,0.15); border-color: var(--red); }
+    button.accent { color: var(--accent); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .card-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; background: rgba(0,0,0,0.2); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+    }
+    .badge.online { background: rgba(46, 160, 67, 0.15); color: var(--green-text); border: 1px solid rgba(46, 160, 67, 0.4); }
+    .badge.stopped { background: rgba(139, 148, 158, 0.15); color: var(--muted); border: 1px solid rgba(139, 148, 158, 0.4); }
+    .badge.errored { background: rgba(248, 81, 73, 0.15); color: var(--red-text); border: 1px solid rgba(248, 81, 73, 0.4); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    .proc-name { font-weight: 600; color: #fff; font-size: 15px; }
+    .proc-path { font-size: 12px; color: var(--muted); font-family: monospace; }
+    .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .logs-panel {
+      background: #05070a;
+      padding: 16px;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 12px;
+      max-height: 420px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #d2a8ff;
+    }
+    .logs-panel.out { color: #a5d6ff; }
+    .logs-panel.err { color: #ffa198; }
+    .tabs { display: flex; gap: 8px; }
+    .tab { padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; background: transparent; border: 1px solid transparent; }
+    .tab.active { background: var(--btn-bg); border-color: var(--border); color: #fff; }
+
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      width: 100%; max-width: 480px; padding: 24px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 9px 12px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <img src="/pm2.png" alt="PM2" style="width:40px;height:40px;border-radius:10px;" />
+        <div>
+          <h1>PM2 Web Monitor</h1>
+          <span id="host-info">Загрузка...</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button onclick="openModal()" class="primary">+ Запустить проект</button>
+        <button onclick="pm2Action('save', '')">💾 Сохранить дамп</button>
+        <button onclick="fetchStatus()">🔄 Обновить</button>
+      </div>
+    </header>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Активные процессы</div>
+        <div class="stat-value" id="stat-procs">-</div>
+        <div class="stat-sub" id="stat-node">Node.js -</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Нагрузка CPU (Load Avg)</div>
+        <div class="stat-value" id="stat-cpu">-</div>
+        <div class="stat-sub" id="stat-cores">- ядер</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Оперативная память</div>
+        <div class="stat-value" id="stat-mem">-</div>
+        <div class="stat-sub" id="stat-mem-sub">Свободно: -</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Аптайм сервера</div>
+        <div class="stat-value" id="stat-uptime">-</div>
+        <div class="stat-sub">Автообновление: каждые 3 сек</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span>Список процессов PM2</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Имя / Скрипт</th>
+              <th>Статус</th>
+              <th>PID</th>
+              <th>Uptime</th>
+              <th>Рестарты (↺)</th>
+              <th>CPU</th>
+              <th>RAM</th>
+              <th>Управление</th>
+            </tr>
+          </thead>
+          <tbody id="proc-tbody">
+            <tr><td colspan="9" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="logs-card" style="display:none;">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <span>Логи процесса: <strong id="log-proc-name" style="color:var(--accent);"></strong></span>
+          <div class="tabs">
+            <button class="tab active" id="tab-out" onclick="switchLogTab('out')">STDOUT (обычные)</button>
+            <button class="tab" id="tab-err" onclick="switchLogTab('err')">STDERR (ошибки)</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="flushLogs()" class="danger">🧹 Очистить логи</button>
+          <button onclick="closeLogs()">✕ Закрыть</button>
+        </div>
+      </div>
+      <div class="logs-panel out" id="logs-content">Загрузка логов...</div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="create-modal">
+    <div class="modal">
+      <h3 style="margin-bottom: 16px;">Запустить новый процесс в PM2</h3>
+      <div class="form-group">
+        <label>Папка проекта (в /opt/projects/node)</label>
+        <select id="new-cwd"></select>
+      </div>
+      <div class="form-group">
+        <label>Название процесса в PM2</label>
+        <input type="text" id="new-name" placeholder="Например: MyBot" />
+      </div>
+      <div class="form-group">
+        <label>Точка входа (скрипт)</label>
+        <input type="text" id="new-script" value="src/index.js" placeholder="src/index.js или dist/index.js" />
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+        <button onclick="closeModal()">Отмена</button>
+        <button class="primary" onclick="createProcess()">Запустить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentLogId = null;
+    let currentLogTab = 'out';
+    let lastLogsData = { outLog: '', errLog: '' };
+
+    function formatBytes(bytes) {
+      if (!bytes) return '0 MB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+    function formatGB(bytes) {
+      return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+    }
+    function formatUptime(msOrSec, isEpochMs = true) {
+      if (!msOrSec) return '-';
+      const diffSec = isEpochMs ? Math.max(0, Math.floor((Date.now() - msOrSec) / 1000)) : Math.floor(msOrSec);
+      const d = Math.floor(diffSec / 86400);
+      const h = Math.floor((diffSec % 86400) / 3600);
+      const m = Math.floor((diffSec % 3600) / 60);
+      const s = diffSec % 60;
+      if (d > 0) return `${d}д ${h}ч ${m}м`;
+      if (h > 0) return `${h}ч ${m}м`;
+      if (m > 0) return `${m}м ${s}с`;
+      return `${s}с`;
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data.error) return;
+
+        const sys = data.system;
+        document.getElementById('host-info').textContent = `${sys.hostname} • ${sys.cpuModel}`;
+        const onlineCount = data.processes.filter(p => p.status === 'online').length;
+        document.getElementById('stat-procs').textContent = `${onlineCount} / ${data.processes.length}`;
+        document.getElementById('stat-node').textContent = `Node.js ${sys.nodeVersion}`;
+        document.getElementById('stat-cpu').textContent = sys.loadAvg[0].toFixed(2);
+        document.getElementById('stat-cores').textContent = `${sys.cpuCount} потоков CPU`;
+        const usedMem = sys.totalMem - sys.freeMem;
+        document.getElementById('stat-mem').textContent = `${formatGB(usedMem)} / ${formatGB(sys.totalMem)}`;
+        document.getElementById('stat-mem-sub').textContent = `Свободно: ${formatGB(sys.freeMem)}`;
+        document.getElementById('stat-uptime').textContent = formatUptime(sys.uptime, false);
+
+        const sel = document.getElementById('new-cwd');
+        if (sel.options.length === 0 && data.projects) {
+          sel.innerHTML = data.projects.map(p => `<option value="${p}">${p}</option>`).join('');
+        }
+
+        const tbody = document.getElementById('proc-tbody');
+        tbody.innerHTML = data.processes.map(p => {
+          const isOnline = p.status === 'online';
+          const badgeClass = isOnline ? 'online' : (p.status === 'stopped' ? 'stopped' : 'errored');
+          return `
+            <tr>
+              <td><strong>#${p.id}</strong></td>
+              <td>
+                <div class="proc-name">${p.name}</div>
+                <div class="proc-path">${p.script}</div>
+              </td>
+              <td><span class="badge ${badgeClass}"><span class="dot"></span>${p.status.toUpperCase()}</span></td>
+              <td>${p.pid || '-'}</td>
+              <td>${isOnline ? formatUptime(p.uptime, true) : '-'}</td>
+              <td>${p.restarts}</td>
+              <td>${p.cpu}%</td>
+              <td>${formatBytes(p.memory)}</td>
+              <td>
+                <div class="actions-cell">
+                  <button class="accent" onclick="openLogs('${p.id}', '${p.name}')">📜 Логи</button>
+                  <button onclick="pm2Action('restart', '${p.id}')">🔄 Рестарт</button>
+                  ${isOnline
+                    ? `<button onclick="pm2Action('stop', '${p.id}')">⏸ Стоп</button>`
+                    : `<button class="primary" onclick="pm2Action('start', '${p.id}')">▶ Старт</button>`
+                  }
+                  <button class="danger" onclick="confirmDelete('${p.id}', '${p.name}')">🗑</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        if (currentLogId !== null) {
+          fetchLogs(currentLogId);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function pm2Action(action, target) {
+      await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target })
+      });
+      await fetchStatus();
+    }
+
+    function confirmDelete(id, name) {
+      if (confirm(`Удалить процесс "${name}" (#${id}) из списка PM2?`)) {
+        pm2Action('delete', id);
+      }
+    }
+
+    async function openLogs(id, name) {
+      currentLogId = id;
+      document.getElementById('log-proc-name').textContent = `${name} (#${id})`;
+      document.getElementById('logs-card').style.display = 'block';
+      await fetchLogs(id);
+    }
+
+    async function fetchLogs(id) {
+      const res = await fetch(`/api/logs?id=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      lastLogsData = data;
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const el = document.getElementById('logs-content');
+      el.className = 'logs-panel ' + currentLogTab;
+      const text = currentLogTab === 'out' ? lastLogsData.outLog : lastLogsData.errLog;
+      el.textContent = text || '(Логи пусты)';
+    }
+
+    function switchLogTab(tab) {
+      currentLogTab = tab;
+      document.getElementById('tab-out').classList.toggle('active', tab === 'out');
+      document.getElementById('tab-err').classList.toggle('active', tab === 'err');
+      renderLogs();
+    }
+
+    async function flushLogs() {
+      if (currentLogId !== null) {
+        await pm2Action('flush', currentLogId);
+        await fetchLogs(currentLogId);
+      }
+    }
+
+    function closeLogs() {
+      currentLogId = null;
+      document.getElementById('logs-card').style.display = 'none';
+    }
+
+    function openModal() { document.getElementById('create-modal').classList.add('open'); }
+    function closeModal() { document.getElementById('create-modal').classList.remove('open'); }
+
+    async function createProcess() {
+      const cwd = document.getElementById('new-cwd').value;
+      const name = document.getElementById('new-name').value.trim();
+      const script = document.getElementById('new-script').value.trim();
+      if (!name || !script) return alert('Укажите имя процесса и путь к скрипту');
+      const res = await fetch('/api/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cwd, name, script })
+      });
+      const data = await res.json();
+      if (data.error) return alert('Ошибка: ' + data.error);
+      closeModal();
+      fetchStatus();
+    }
+
+    fetchStatus();
+    setInterval(fetchStatus, 3000);
+  </script>
+</body>
+</html>
