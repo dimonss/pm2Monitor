@@ -115,6 +115,8 @@
     .badge.online { background: rgba(46, 160, 67, 0.15); color: var(--green-text); border: 1px solid rgba(46, 160, 67, 0.4); }
     .badge.stopped { background: rgba(139, 148, 158, 0.15); color: var(--muted); border: 1px solid rgba(139, 148, 158, 0.4); }
     .badge.errored { background: rgba(248, 81, 73, 0.15); color: var(--red-text); border: 1px solid rgba(248, 81, 73, 0.4); }
+    .badge.env-node { background: rgba(63, 185, 80, 0.12); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.35); }
+    .badge.env-py { background: rgba(88, 166, 255, 0.12); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35); }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
     .proc-name { font-weight: 600; color: #fff; font-size: 15px; }
@@ -197,13 +199,14 @@
 
     <div class="card">
       <div class="card-header">
-        <span>Список процессов PM2</span>
+        <span>Список процессов PM2 (Node.js & Python)</span>
       </div>
       <div style="overflow-x: auto;">
         <table>
           <thead>
             <tr>
               <th>ID</th>
+              <th>Контейнер</th>
               <th>Имя / Скрипт</th>
               <th>Статус</th>
               <th>PID</th>
@@ -215,7 +218,7 @@
             </tr>
           </thead>
           <tbody id="proc-tbody">
-            <tr><td colspan="9" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
+            <tr><td colspan="10" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
           </tbody>
         </table>
       </div>
@@ -243,7 +246,14 @@
     <div class="modal">
       <h3 style="margin-bottom: 16px;">Запустить новый процесс в PM2</h3>
       <div class="form-group">
-        <label>Папка проекта (в /opt/projects/node)</label>
+        <label>Контейнер / Среда</label>
+        <select id="new-container" onchange="updateProjectList()">
+          <option value="dev-node">Node.js (dev-node)</option>
+          <option value="dev-python">Python (dev-python)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label id="new-cwd-label">Папка проекта</label>
         <select id="new-cwd"></select>
       </div>
       <div class="form-group">
@@ -252,7 +262,7 @@
       </div>
       <div class="form-group">
         <label>Точка входа (скрипт)</label>
-        <input type="text" id="new-script" value="src/index.js" placeholder="src/index.js или dist/index.js" />
+        <input type="text" id="new-script" value="src/index.js" placeholder="src/index.js или run.py" />
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
         <button onclick="closeModal()">Отмена</button>
@@ -265,6 +275,8 @@
     let currentLogId = null;
     let currentLogTab = 'out';
     let lastLogsData = { outLog: '', errLog: '' };
+    let cachedNodeProjects = [];
+    let cachedPythonProjects = [];
 
     function formatBytes(bytes) {
       if (!bytes) return '0 MB';
@@ -286,6 +298,19 @@
       return `${s}с`;
     }
 
+    function updateProjectList() {
+      const container = document.getElementById('new-container').value;
+      const sel = document.getElementById('new-cwd');
+      const scriptInput = document.getElementById('new-script');
+      const label = document.getElementById('new-cwd-label');
+      const list = container === 'dev-python' ? cachedPythonProjects : cachedNodeProjects;
+      label.textContent = container === 'dev-python'
+        ? 'Папка проекта (в /opt/projects/python)'
+        : 'Папка проекта (в /opt/projects/node)';
+      scriptInput.value = container === 'dev-python' ? 'run.py' : 'src/index.js';
+      sel.innerHTML = list.map(p => `<option value="${p}">${p}</option>`).join('');
+    }
+
     async function fetchStatus() {
       try {
         const res = await fetch('/api/status');
@@ -296,7 +321,7 @@
         document.getElementById('host-info').textContent = `${sys.hostname} • ${sys.cpuModel}`;
         const onlineCount = data.processes.filter(p => p.status === 'online').length;
         document.getElementById('stat-procs').textContent = `${onlineCount} / ${data.processes.length}`;
-        document.getElementById('stat-node').textContent = `Node.js ${sys.nodeVersion}`;
+        document.getElementById('stat-node').textContent = `Node ${sys.nodeVersion} • Python ${sys.pythonConnected ? 'OK' : 'OFF'}`;
         document.getElementById('stat-cpu').textContent = sys.loadAvg[0].toFixed(2);
         document.getElementById('stat-cores').textContent = `${sys.cpuCount} потоков CPU`;
         const usedMem = sys.totalMem - sys.freeMem;
@@ -304,18 +329,26 @@
         document.getElementById('stat-mem-sub').textContent = `Свободно: ${formatGB(sys.freeMem)}`;
         document.getElementById('stat-uptime').textContent = formatUptime(sys.uptime, false);
 
+        cachedNodeProjects = data.projects || [];
+        cachedPythonProjects = data.pythonProjects || [];
         const sel = document.getElementById('new-cwd');
-        if (sel.options.length === 0 && data.projects) {
-          sel.innerHTML = data.projects.map(p => `<option value="${p}">${p}</option>`).join('');
+        if (sel.options.length === 0) {
+          updateProjectList();
         }
 
         const tbody = document.getElementById('proc-tbody');
         tbody.innerHTML = data.processes.map(p => {
           const isOnline = p.status === 'online';
           const badgeClass = isOnline ? 'online' : (p.status === 'stopped' ? 'stopped' : 'errored');
+          const isPy = p.container === 'dev-python' || String(p.id).startsWith('py:');
+          const envBadge = isPy
+            ? `<span class="badge env-py">🐍 Python</span>`
+            : `<span class="badge env-node">🟢 Node.js</span>`;
+          const displayId = p.rawId !== undefined ? p.rawId : p.id;
           return `
             <tr>
-              <td><strong>#${p.id}</strong></td>
+              <td><strong>#${displayId}</strong></td>
+              <td>${envBadge}</td>
               <td>
                 <div class="proc-name">${p.name}</div>
                 <div class="proc-path">${p.script}</div>
@@ -359,14 +392,14 @@
     }
 
     function confirmDelete(id, name) {
-      if (confirm(`Удалить процесс "${name}" (#${id}) из списка PM2?`)) {
+      if (confirm(`Удалить процесс "${name}" (${id}) из списка PM2?`)) {
         pm2Action('delete', id);
       }
     }
 
     async function openLogs(id, name) {
       currentLogId = id;
-      document.getElementById('log-proc-name').textContent = `${name} (#${id})`;
+      document.getElementById('log-proc-name').textContent = `${name} (${id})`;
       document.getElementById('logs-card').style.display = 'block';
       await fetchLogs(id);
     }
@@ -404,10 +437,14 @@
       document.getElementById('logs-card').style.display = 'none';
     }
 
-    function openModal() { document.getElementById('create-modal').classList.add('open'); }
+    function openModal() {
+      updateProjectList();
+      document.getElementById('create-modal').classList.add('open');
+    }
     function closeModal() { document.getElementById('create-modal').classList.remove('open'); }
 
     async function createProcess() {
+      const container = document.getElementById('new-container').value;
       const cwd = document.getElementById('new-cwd').value;
       const name = document.getElementById('new-name').value.trim();
       const script = document.getElementById('new-script').value.trim();
@@ -415,7 +452,7 @@
       const res = await fetch('/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cwd, name, script })
+        body: JSON.stringify({ container, cwd, name, script })
       });
       const data = await res.json();
       if (data.error) return alert('Ошибка: ' + data.error);

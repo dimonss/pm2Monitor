@@ -10,6 +10,7 @@ const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const WORKSPACE_DIR = '/workspace';
+const PYTHON_AGENT_URL = process.env.PYTHON_AGENT_URL || 'http://dev-python:3099';
 
 async function runPm2(args) {
   const { stdout, stderr } = await execFileAsync('pm2', args, { timeout: 15000 });
@@ -34,9 +35,21 @@ async function readTail(filePath, maxBytes = 65536) {
 async function getWorkspaceProjects() {
   try {
     const entries = await fs.readdir(WORKSPACE_DIR, { withFileTypes: true });
-    return entries.filter(e => e.isDirectory()).map(e => e.name);
+    return entries.filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => e.name);
   } catch {
     return [];
+  }
+}
+
+async function fetchPythonAgent(pathname, options = {}) {
+  try {
+    const res = await fetch(`${PYTHON_AGENT_URL}${pathname}`, {
+      ...options,
+      signal: AbortSignal.timeout(5000)
+    });
+    return await res.json();
+  } catch {
+    return null;
   }
 }
 
@@ -45,13 +58,39 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/api/status') {
     try {
-      const { stdout } = await runPm2(['jlist']);
+      const [{ stdout }, nodeProjects, pyData] = await Promise.all([
+        runPm2(['jlist']),
+        getWorkspaceProjects(),
+        fetchPythonAgent('/api/status')
+      ]);
       const list = JSON.parse(stdout || '[]');
-      const projects = await getWorkspaceProjects();
+      const nodeProcesses = list.map(p => ({
+        id: `node:${p.pm_id}`,
+        rawId: p.pm_id,
+        container: 'dev-node',
+        runtime: 'Node.js',
+        name: p.name,
+        pid: p.pid,
+        status: p.pm2_env?.status || 'unknown',
+        uptime: p.pm2_env?.pm_uptime || 0,
+        restarts: p.pm2_env?.restart_time || 0,
+        cpu: p.monit?.cpu || 0,
+        memory: p.monit?.memory || 0,
+        script: p.pm2_env?.pm_exec_path || '',
+        cwd: p.pm2_env?.pm_cwd || '',
+        nodeVersion: p.pm2_env?.node_version || '',
+        outLogPath: p.pm2_env?.pm_out_log_path || '',
+        errLogPath: p.pm2_env?.pm_err_log_path || ''
+      }));
+
+      const pyProcesses = (pyData && Array.isArray(pyData.processes)) ? pyData.processes : [];
+      const pyProjects = (pyData && Array.isArray(pyData.projects)) ? pyData.projects : [];
+
       const payload = {
         system: {
-          hostname: 'HomeServer (dev-node)',
+          hostname: 'HomeServer (dev-node + dev-python)',
           nodeVersion: process.version,
+          pythonConnected: Boolean(pyData),
           cpuCount: os.cpus().length,
           cpuModel: os.cpus()[0]?.model || 'CPU',
           loadAvg: os.loadavg(),
@@ -59,22 +98,9 @@ const server = http.createServer(async (req, res) => {
           freeMem: os.freemem(),
           uptime: os.uptime()
         },
-        projects,
-        processes: list.map(p => ({
-          id: p.pm_id,
-          name: p.name,
-          pid: p.pid,
-          status: p.pm2_env?.status || 'unknown',
-          uptime: p.pm2_env?.pm_uptime || 0,
-          restarts: p.pm2_env?.restart_time || 0,
-          cpu: p.monit?.cpu || 0,
-          memory: p.monit?.memory || 0,
-          script: p.pm2_env?.pm_exec_path || '',
-          cwd: p.pm2_env?.pm_cwd || '',
-          nodeVersion: p.pm2_env?.node_version || '',
-          outLogPath: p.pm2_env?.pm_out_log_path || '',
-          errLogPath: p.pm2_env?.pm_err_log_path || ''
-        }))
+        projects: nodeProjects,
+        pythonProjects: pyProjects,
+        processes: [...nodeProcesses, ...pyProcesses]
       };
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(payload));
@@ -87,10 +113,24 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/api/logs') {
     try {
-      const id = url.searchParams.get('id');
+      const id = url.searchParams.get('id') || '';
+      if (id.startsWith('py:')) {
+        const rawId = id.slice(3);
+        const pyLogs = await fetchPythonAgent(`/api/logs?id=${encodeURIComponent(rawId)}`);
+        if (!pyLogs || pyLogs.error) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: pyLogs?.error || 'Python process not found' }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(pyLogs));
+        return;
+      }
+
+      const rawId = id.startsWith('node:') ? id.slice(5) : id;
       const { stdout } = await runPm2(['jlist']);
       const list = JSON.parse(stdout || '[]');
-      const proc = list.find(p => String(p.pm_id) === String(id) || p.name === id);
+      const proc = list.find(p => String(p.pm_id) === String(rawId) || p.name === rawId);
       if (!proc) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Process not found' }));
@@ -116,16 +156,44 @@ const server = http.createServer(async (req, res) => {
         const allowed = ['restart', 'stop', 'start', 'reload', 'delete', 'flush', 'save'];
         if (!allowed.includes(data.action)) throw new Error('Invalid action');
         if (data.action === 'save') {
-          await runPm2(['save']);
+          await Promise.all([
+            runPm2(['save']),
+            fetchPythonAgent('/api/action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'save' })
+            })
+          ]);
         } else {
-          await runPm2([data.action, String(data.target)]);
-          await runPm2(['save']);
+          const target = String(data.target || '');
+          if (target.startsWith('py:')) {
+            const rawId = target.slice(3);
+            const pyRes = await fetchPythonAgent('/api/action', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: data.action, target: rawId })
+            });
+            if (pyRes?.error) throw new Error(pyRes.error);
+          } else {
+            const rawId = target.startsWith('node:') ? target.slice(5) : target;
+            await runPm2([data.action, rawId]);
+            await runPm2(['save']);
+          }
         }
       } else if (url.pathname === '/api/create') {
         if (!data.name || !data.script) throw new Error('Name and script are required');
-        const cwd = data.cwd ? path.join(WORKSPACE_DIR, path.basename(data.cwd)) : WORKSPACE_DIR;
-        await runPm2(['start', data.script, '--name', data.name, '--cwd', cwd]);
-        await runPm2(['save']);
+        if (data.container === 'dev-python') {
+          const pyRes = await fetchPythonAgent('/api/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          if (!pyRes || pyRes.error) throw new Error(pyRes?.error || 'Python container unreachable');
+        } else {
+          const cwd = data.cwd ? path.join(WORKSPACE_DIR, path.basename(data.cwd)) : WORKSPACE_DIR;
+          await runPm2(['start', data.script, '--name', data.name, '--cwd', cwd]);
+          await runPm2(['save']);
+        }
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
@@ -136,10 +204,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if ((req.method === "GET" || req.method === "HEAD") && (url.pathname === "/pm2.png" || url.pathname === "/favicon.ico")) {
+  if ((req.method === 'GET' || req.method === 'HEAD') && (url.pathname === '/pm2.png' || url.pathname === '/favicon.ico')) {
     try {
-      const img = await fs.readFile(path.join(__dirname, "public", "pm2.png"));
-      res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" });
+      const img = await fs.readFile(path.join(__dirname, 'public', 'pm2.png'));
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
       res.end(img);
     } catch {
       res.writeHead(404);
@@ -147,7 +215,7 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
-  // Static index.html
+
   try {
     const html = await fs.readFile(path.join(__dirname, 'public', 'index.html'), 'utf8');
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
