@@ -28,6 +28,7 @@
       color: var(--text);
       padding: 24px;
       line-height: 1.5;
+      -webkit-tap-highlight-color: transparent;
     }
     .container { max-width: 1280px; margin: 0 auto; }
     header {
@@ -40,10 +41,18 @@
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border);
     }
-    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand > div { min-width: 0; }
     .brand h1 { font-size: 20px; font-weight: 600; }
-    .brand span { font-size: 13px; color: var(--muted); }
-    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .brand span {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     button {
       background: var(--btn-bg);
       color: var(--text);
@@ -56,6 +65,7 @@
       transition: all 0.15s;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       white-space: nowrap;
     }
@@ -94,6 +104,7 @@
       cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       transition: all 0.15s;
     }
@@ -113,6 +124,7 @@
       height: 8px;
       border-radius: 50%;
       background: var(--green-text);
+      flex-shrink: 0;
     }
     .server-tab .srv-dot.offline {
       background: var(--red-text);
@@ -128,7 +140,7 @@
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -137,10 +149,19 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 16px;
+      min-width: 0;
     }
     .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
-    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .card {
       background: var(--card);
@@ -155,16 +176,17 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
       font-weight: 600;
     }
 
-    /* Fixed table layout so columns never jump when CPU/RAM values change */
+    /* Fixed table layout on desktop so columns never jump when CPU/RAM values change */
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
       table-layout: fixed;
-      min-width: 920px;
     }
     th, td {
       padding: 14px 16px;
@@ -184,15 +206,15 @@
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(255,255,255,0.02); }
 
-    col.col-id       { width: 64px; }
+    col.col-id       { width: 60px; }
     col.col-name     { width: auto; }
-    col.col-status   { width: 124px; }
-    col.col-pid      { width: 84px; }
-    col.col-uptime   { width: 115px; }
-    col.col-restarts { width: 110px; }
-    col.col-cpu      { width: 92px; }
-    col.col-ram      { width: 108px; }
-    col.col-actions  { width: 295px; }
+    col.col-status   { width: 120px; }
+    col.col-pid      { width: 80px; }
+    col.col-uptime   { width: 110px; }
+    col.col-restarts { width: 105px; }
+    col.col-cpu      { width: 85px; }
+    col.col-ram      { width: 100px; }
+    col.col-actions  { width: 345px; }
 
     .num-cell {
       font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
@@ -229,6 +251,16 @@
     }
     .actions-cell { display: flex; gap: 6px; flex-wrap: nowrap; }
 
+    .logs-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .logs-header-actions {
+      display: flex;
+      gap: 8px;
+    }
     .logs-panel {
       background: #05070a;
       padding: 16px;
@@ -247,8 +279,9 @@
     .tab.active { background: var(--btn-bg); border-color: var(--border); color: #fff; }
 
     .modal-backdrop {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
       align-items: center; justify-content: center; z-index: 100;
+      padding: 16px;
     }
     .modal-backdrop.open { display: flex; }
     .modal {
@@ -261,13 +294,214 @@
       width: 100%; padding: 9px 12px; background: var(--bg); border: 1px solid var(--border);
       border-radius: 6px; color: var(--text); font-size: 14px;
     }
+
+    /* Tablet breakpoint */
+    @media (max-width: 1024px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    /* Mobile & small tablet card view (no horizontal table scroll) */
+    @media (max-width: 860px) {
+      body {
+        padding: 12px;
+      }
+      header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+      }
+      .brand h1 {
+        font-size: 18px;
+      }
+      .header-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .header-actions button.primary {
+        grid-column: 1 / -1;
+        padding: 10px 14px;
+      }
+      .server-bar {
+        margin-bottom: 14px;
+      }
+      .server-tabs {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+      .server-tab {
+        padding: 9px 10px;
+        font-size: 12px;
+        gap: 6px;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .stat-card {
+        padding: 12px;
+      }
+      .stat-label {
+        font-size: 11px;
+      }
+      .stat-value {
+        font-size: 18px;
+      }
+      .stat-sub {
+        font-size: 11px;
+      }
+      .card-header {
+        padding: 12px 14px;
+        font-size: 14px;
+      }
+
+      /* Transform table rows into clean mobile cards */
+      table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+      }
+      colgroup, thead {
+        display: none;
+      }
+      tbody tr {
+        padding: 14px;
+        border-bottom: 1px solid var(--border);
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 12px;
+        align-items: center;
+      }
+      tbody tr:last-child {
+        border-bottom: none;
+      }
+      tbody td {
+        padding: 0;
+        border: none;
+      }
+      tbody td.empty-cell {
+        grid-column: 1 / -1;
+        padding: 20px 12px;
+      }
+
+      /* Card Top Header: ID (left) + Status Badge (right) */
+      tbody td.cell-id {
+        grid-column: 1 / 2;
+        order: 1;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      tbody td.cell-status {
+        grid-column: 2 / 3;
+        order: 2;
+        justify-self: end;
+      }
+
+      /* Process Name & Script Path full width */
+      tbody td.cell-name {
+        grid-column: 1 / -1;
+        order: 3;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+        min-width: 0;
+      }
+      .proc-name {
+        font-size: 16px;
+      }
+      .proc-path {
+        white-space: normal;
+        word-break: break-all;
+        margin-top: 2px;
+      }
+
+      /* Metrics 2x3 Grid inside card */
+      tbody td.cell-metric {
+        order: 4;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(48, 54, 61, 0.55);
+        border-radius: 7px;
+        padding: 7px 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      tbody td.cell-metric::before {
+        content: attr(data-label);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+
+      /* Actions bar at the bottom of card */
+      tbody td.cell-actions {
+        grid-column: 1 / -1;
+        order: 5;
+        padding-top: 4px;
+      }
+      .actions-cell {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr auto;
+        gap: 8px;
+      }
+      .actions-cell button {
+        padding: 9px 10px;
+        font-size: 12px;
+      }
+
+      /* Logs panel on mobile */
+      .logs-header-left {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .tabs {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+      .tab {
+        text-align: center;
+        justify-content: center;
+        padding: 7px 10px;
+      }
+      .logs-header-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+      .logs-panel {
+        padding: 12px;
+        font-size: 11px;
+        max-height: 340px;
+      }
+
+      .modal {
+        padding: 18px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .server-tab span.srv-label-sub {
+        display: none;
+      }
+      .actions-cell {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <div class="brand">
-        <img src="/pm2.png" alt="PM2" style="width:40px;height:40px;border-radius:10px;" />
+        <img src="/pm2.png" alt="PM2" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;" />
         <div>
           <h1>PM2 Web Monitor</h1>
           <span id="host-info">Загрузка...</span>
@@ -284,12 +518,12 @@
       <div class="server-tabs">
         <button class="server-tab active" id="srv-tab-node" onclick="selectContainer('dev-node')">
           <span class="srv-dot" id="dot-node"></span>
-          <span>🟢 dev-node (Node.js)</span>
+          <span>🟢 dev-node <span class="srv-label-sub">(Node.js)</span></span>
           <span class="srv-count" id="count-node">0</span>
         </button>
         <button class="server-tab" id="srv-tab-python" onclick="selectContainer('dev-python')">
           <span class="srv-dot" id="dot-python"></span>
-          <span>🐍 dev-python (Python)</span>
+          <span>🐍 dev-python <span class="srv-label-sub">(Python)</span></span>
           <span class="srv-count" id="count-python">0</span>
         </button>
       </div>
@@ -322,17 +556,17 @@
       <div class="card-header">
         <span id="table-title">Список процессов PM2 — dev-node</span>
       </div>
-      <div style="overflow-x: auto;">
+      <div>
         <table>
           <colgroup>
             <col class="col-id" />
             <col class="col-name" />
             <col class="col-status" />
-            <col class="col-pid" />
-            <col class="col-uptime" />
-            <col class="col-restarts" />
             <col class="col-cpu" />
             <col class="col-ram" />
+            <col class="col-uptime" />
+            <col class="col-restarts" />
+            <col class="col-pid" />
             <col class="col-actions" />
           </colgroup>
           <thead>
@@ -340,16 +574,16 @@
               <th>ID</th>
               <th>Имя / Скрипт</th>
               <th>Статус</th>
-              <th>PID</th>
-              <th>Uptime</th>
-              <th>Рестарты (↺)</th>
               <th>CPU</th>
               <th>RAM</th>
+              <th>Uptime</th>
+              <th>Рестарты (↺)</th>
+              <th>PID</th>
               <th>Управление</th>
             </tr>
           </thead>
           <tbody id="proc-tbody">
-            <tr><td colspan="9" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
+            <tr><td colspan="9" class="empty-cell" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
           </tbody>
         </table>
       </div>
@@ -357,14 +591,14 @@
 
     <div class="card" id="logs-card" style="display:none;">
       <div class="card-header">
-        <div style="display:flex;align-items:center;gap:16px;">
+        <div class="logs-header-left">
           <span>Логи процесса: <strong id="log-proc-name" style="color:var(--accent);"></strong></span>
           <div class="tabs">
             <button class="tab active" id="tab-out" onclick="switchLogTab('out')">STDOUT (обычные)</button>
             <button class="tab" id="tab-err" onclick="switchLogTab('err')">STDERR (ошибки)</button>
           </div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div class="logs-header-actions">
           <button onclick="flushLogs()" class="danger">🧹 Очистить логи</button>
           <button onclick="closeLogs()">✕ Закрыть</button>
         </div>
@@ -487,7 +721,7 @@
 
       const tbody = document.getElementById('proc-tbody');
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);">В контейнере ${activeContainer} нет процессов PM2</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-cell" style="text-align:center;color:var(--muted);">В контейнере ${activeContainer} нет процессов PM2</td></tr>`;
         return;
       }
 
@@ -498,18 +732,18 @@
         const cpuFormatted = `${Number(p.cpu || 0).toFixed(1)}%`;
         return `
           <tr>
-            <td class="num-cell"><strong>#${displayId}</strong></td>
-            <td>
+            <td class="num-cell cell-id"><strong>#${displayId}</strong></td>
+            <td class="cell-name">
               <div class="proc-name" title="${p.name}">${p.name}</div>
               <div class="proc-path" title="${p.script}">${p.script}</div>
             </td>
-            <td><span class="badge ${badgeClass}"><span class="dot"></span>${p.status.toUpperCase()}</span></td>
-            <td class="num-cell">${p.pid || '-'}</td>
-            <td class="num-cell">${isOnline ? formatUptime(p.uptime, true) : '-'}</td>
-            <td class="num-cell">${p.restarts}</td>
-            <td class="num-cell">${cpuFormatted}</td>
-            <td class="num-cell">${formatBytes(p.memory)}</td>
-            <td>
+            <td class="cell-status"><span class="badge ${badgeClass}"><span class="dot"></span>${p.status.toUpperCase()}</span></td>
+            <td class="num-cell cell-metric" data-label="CPU">${cpuFormatted}</td>
+            <td class="num-cell cell-metric" data-label="RAM">${formatBytes(p.memory)}</td>
+            <td class="num-cell cell-metric" data-label="Uptime">${isOnline ? formatUptime(p.uptime, true) : '-'}</td>
+            <td class="num-cell cell-metric" data-label="Рестарты">${p.restarts}</td>
+            <td class="num-cell cell-metric" data-label="PID">${p.pid || '-'}</td>
+            <td class="cell-actions">
               <div class="actions-cell">
                 <button class="accent" onclick="openLogs('${p.id}', '${p.name}')">📜 Логи</button>
                 <button onclick="pm2Action('restart', '${p.id}')">🔄 Рестарт</button>
@@ -569,6 +803,7 @@
       document.getElementById('log-proc-name').textContent = `${name} (${id})`;
       document.getElementById('logs-card').style.display = 'block';
       await fetchLogs(id);
+      document.getElementById('logs-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     async function fetchLogs(id) {
