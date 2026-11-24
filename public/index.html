@@ -36,17 +36,11 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border);
     }
     .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-logo {
-      background: linear-gradient(135deg, #7928ca, #00d8ff);
-      width: 40px; height: 40px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 15px; color: #fff;
-    }
     .brand h1 { font-size: 20px; font-weight: 600; }
     .brand span { font-size: 13px; color: var(--muted); }
     .header-actions { display: flex; gap: 10px; align-items: center; }
@@ -63,6 +57,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
     }
     button:hover { background: var(--btn-hover); border-color: #8b949e; }
     button.primary { background: var(--green); border-color: rgba(240,246,252,0.1); color: #fff; }
@@ -70,6 +65,66 @@
     button.danger { color: var(--red-text); }
     button.danger:hover { background: rgba(218,54,51,0.15); border-color: var(--red); }
     button.accent { color: var(--accent); }
+
+    /* Server / Container Switcher (PM2 Plus style) */
+    .server-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .server-tabs {
+      display: inline-flex;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .server-tab {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 16px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+    .server-tab:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+      border-color: transparent;
+    }
+    .server-tab.active {
+      background: var(--btn-bg);
+      color: #fff;
+      border-color: var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .server-tab .srv-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green-text);
+    }
+    .server-tab .srv-dot.offline {
+      background: var(--red-text);
+    }
+    .server-tab .srv-count {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 11px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-variant-numeric: tabular-nums;
+    }
 
     .stats-grid {
       display: grid;
@@ -84,8 +139,8 @@
       padding: 16px;
     }
     .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
-    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
     .card {
       background: var(--card);
@@ -102,26 +157,77 @@
       align-items: center;
       font-weight: 600;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); }
-    th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; background: rgba(0,0,0,0.2); }
+
+    /* Fixed table layout so columns never jump when CPU/RAM values change */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      table-layout: fixed;
+      min-width: 920px;
+    }
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      font-variant-numeric: tabular-nums;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 12px;
+      text-transform: uppercase;
+      background: rgba(0,0,0,0.2);
+      white-space: nowrap;
+    }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(255,255,255,0.02); }
+
+    col.col-id       { width: 64px; }
+    col.col-name     { width: auto; }
+    col.col-status   { width: 124px; }
+    col.col-pid      { width: 84px; }
+    col.col-uptime   { width: 115px; }
+    col.col-restarts { width: 110px; }
+    col.col-cpu      { width: 92px; }
+    col.col-ram      { width: 108px; }
+    col.col-actions  { width: 295px; }
+
+    .num-cell {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
 
     .badge {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
+      white-space: nowrap;
     }
     .badge.online { background: rgba(46, 160, 67, 0.15); color: var(--green-text); border: 1px solid rgba(46, 160, 67, 0.4); }
     .badge.stopped { background: rgba(139, 148, 158, 0.15); color: var(--muted); border: 1px solid rgba(139, 148, 158, 0.4); }
     .badge.errored { background: rgba(248, 81, 73, 0.15); color: var(--red-text); border: 1px solid rgba(248, 81, 73, 0.4); }
-    .badge.env-node { background: rgba(63, 185, 80, 0.12); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.35); }
-    .badge.env-py { background: rgba(88, 166, 255, 0.12); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.35); }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-    .proc-name { font-weight: 600; color: #fff; font-size: 15px; }
-    .proc-path { font-size: 12px; color: var(--muted); font-family: monospace; }
-    .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+    .proc-name {
+      font-weight: 600;
+      color: #fff;
+      font-size: 15px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .proc-path {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .actions-cell { display: flex; gap: 6px; flex-wrap: nowrap; }
 
     .logs-panel {
       background: #05070a;
@@ -174,11 +280,26 @@
       </div>
     </header>
 
+    <div class="server-bar">
+      <div class="server-tabs">
+        <button class="server-tab active" id="srv-tab-node" onclick="selectContainer('dev-node')">
+          <span class="srv-dot" id="dot-node"></span>
+          <span>🟢 dev-node (Node.js)</span>
+          <span class="srv-count" id="count-node">0</span>
+        </button>
+        <button class="server-tab" id="srv-tab-python" onclick="selectContainer('dev-python')">
+          <span class="srv-dot" id="dot-python"></span>
+          <span>🐍 dev-python (Python)</span>
+          <span class="srv-count" id="count-python">0</span>
+        </button>
+      </div>
+    </div>
+
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-label">Активные процессы</div>
+        <div class="stat-label">Процессы контейнера</div>
         <div class="stat-value" id="stat-procs">-</div>
-        <div class="stat-sub" id="stat-node">Node.js -</div>
+        <div class="stat-sub" id="stat-node">Контейнер: dev-node</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Нагрузка CPU (Load Avg)</div>
@@ -199,14 +320,24 @@
 
     <div class="card">
       <div class="card-header">
-        <span>Список процессов PM2 (Node.js & Python)</span>
+        <span id="table-title">Список процессов PM2 — dev-node</span>
       </div>
       <div style="overflow-x: auto;">
         <table>
+          <colgroup>
+            <col class="col-id" />
+            <col class="col-name" />
+            <col class="col-status" />
+            <col class="col-pid" />
+            <col class="col-uptime" />
+            <col class="col-restarts" />
+            <col class="col-cpu" />
+            <col class="col-ram" />
+            <col class="col-actions" />
+          </colgroup>
           <thead>
             <tr>
               <th>ID</th>
-              <th>Контейнер</th>
               <th>Имя / Скрипт</th>
               <th>Статус</th>
               <th>PID</th>
@@ -218,7 +349,7 @@
             </tr>
           </thead>
           <tbody id="proc-tbody">
-            <tr><td colspan="10" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
+            <tr><td colspan="9" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
           </tbody>
         </table>
       </div>
@@ -272,6 +403,8 @@
   </div>
 
   <script>
+    let activeContainer = localStorage.getItem('pm2_active_container') || 'dev-node';
+    let lastStatusData = null;
     let currentLogId = null;
     let currentLogTab = 'out';
     let lastLogsData = { outLog: '', errLog: '' };
@@ -279,7 +412,7 @@
     let cachedPythonProjects = [];
 
     function formatBytes(bytes) {
-      if (!bytes) return '0 MB';
+      if (!bytes) return '0.0 MB';
       return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
     function formatGB(bytes) {
@@ -298,6 +431,13 @@
       return `${s}с`;
     }
 
+    function selectContainer(container) {
+      activeContainer = container;
+      localStorage.setItem('pm2_active_container', container);
+      closeLogs();
+      renderStatus();
+    }
+
     function updateProjectList() {
       const container = document.getElementById('new-container').value;
       const sel = document.getElementById('new-cwd');
@@ -311,68 +451,95 @@
       sel.innerHTML = list.map(p => `<option value="${p}">${p}</option>`).join('');
     }
 
+    function renderStatus() {
+      if (!lastStatusData) return;
+      const data = lastStatusData;
+      const sys = data.system;
+
+      document.getElementById('srv-tab-node').classList.toggle('active', activeContainer === 'dev-node');
+      document.getElementById('srv-tab-python').classList.toggle('active', activeContainer === 'dev-python');
+      document.getElementById('dot-python').classList.toggle('offline', !sys.pythonConnected);
+
+      const nodeProcs = data.processes.filter(p => p.container !== 'dev-python' && !String(p.id).startsWith('py:'));
+      const pyProcs = data.processes.filter(p => p.container === 'dev-python' || String(p.id).startsWith('py:'));
+
+      document.getElementById('count-node').textContent = `${nodeProcs.filter(p => p.status === 'online').length}/${nodeProcs.length}`;
+      document.getElementById('count-python').textContent = `${pyProcs.filter(p => p.status === 'online').length}/${pyProcs.length}`;
+
+      const filtered = activeContainer === 'dev-python' ? pyProcs : nodeProcs;
+      const onlineCount = filtered.filter(p => p.status === 'online').length;
+
+      document.getElementById('host-info').textContent = `${sys.hostname} • ${sys.cpuModel}`;
+      document.getElementById('stat-procs').textContent = `${onlineCount} / ${filtered.length}`;
+      document.getElementById('stat-node').textContent = activeContainer === 'dev-python'
+        ? `Контейнер: dev-python (Python 3.12)`
+        : `Контейнер: dev-node (Node ${sys.nodeVersion})`;
+      document.getElementById('table-title').textContent = activeContainer === 'dev-python'
+        ? 'Список процессов PM2 — dev-python (Python)'
+        : 'Список процессов PM2 — dev-node (Node.js)';
+
+      document.getElementById('stat-cpu').textContent = sys.loadAvg[0].toFixed(2);
+      document.getElementById('stat-cores').textContent = `${sys.cpuCount} потоков CPU`;
+      const usedMem = sys.totalMem - sys.freeMem;
+      document.getElementById('stat-mem').textContent = `${formatGB(usedMem)} / ${formatGB(sys.totalMem)}`;
+      document.getElementById('stat-mem-sub').textContent = `Свободно: ${formatGB(sys.freeMem)}`;
+      document.getElementById('stat-uptime').textContent = formatUptime(sys.uptime, false);
+
+      const tbody = document.getElementById('proc-tbody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);">В контейнере ${activeContainer} нет процессов PM2</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(p => {
+        const isOnline = p.status === 'online';
+        const badgeClass = isOnline ? 'online' : (p.status === 'stopped' ? 'stopped' : 'errored');
+        const displayId = p.rawId !== undefined ? p.rawId : p.id;
+        const cpuFormatted = `${Number(p.cpu || 0).toFixed(1)}%`;
+        return `
+          <tr>
+            <td class="num-cell"><strong>#${displayId}</strong></td>
+            <td>
+              <div class="proc-name" title="${p.name}">${p.name}</div>
+              <div class="proc-path" title="${p.script}">${p.script}</div>
+            </td>
+            <td><span class="badge ${badgeClass}"><span class="dot"></span>${p.status.toUpperCase()}</span></td>
+            <td class="num-cell">${p.pid || '-'}</td>
+            <td class="num-cell">${isOnline ? formatUptime(p.uptime, true) : '-'}</td>
+            <td class="num-cell">${p.restarts}</td>
+            <td class="num-cell">${cpuFormatted}</td>
+            <td class="num-cell">${formatBytes(p.memory)}</td>
+            <td>
+              <div class="actions-cell">
+                <button class="accent" onclick="openLogs('${p.id}', '${p.name}')">📜 Логи</button>
+                <button onclick="pm2Action('restart', '${p.id}')">🔄 Рестарт</button>
+                ${isOnline
+                  ? `<button onclick="pm2Action('stop', '${p.id}')">⏸ Стоп</button>`
+                  : `<button class="primary" onclick="pm2Action('start', '${p.id}')">▶ Старт</button>`
+                }
+                <button class="danger" onclick="confirmDelete('${p.id}', '${p.name}')">🗑</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
     async function fetchStatus() {
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
         if (data.error) return;
-
-        const sys = data.system;
-        document.getElementById('host-info').textContent = `${sys.hostname} • ${sys.cpuModel}`;
-        const onlineCount = data.processes.filter(p => p.status === 'online').length;
-        document.getElementById('stat-procs').textContent = `${onlineCount} / ${data.processes.length}`;
-        document.getElementById('stat-node').textContent = `Node ${sys.nodeVersion} • Python ${sys.pythonConnected ? 'OK' : 'OFF'}`;
-        document.getElementById('stat-cpu').textContent = sys.loadAvg[0].toFixed(2);
-        document.getElementById('stat-cores').textContent = `${sys.cpuCount} потоков CPU`;
-        const usedMem = sys.totalMem - sys.freeMem;
-        document.getElementById('stat-mem').textContent = `${formatGB(usedMem)} / ${formatGB(sys.totalMem)}`;
-        document.getElementById('stat-mem-sub').textContent = `Свободно: ${formatGB(sys.freeMem)}`;
-        document.getElementById('stat-uptime').textContent = formatUptime(sys.uptime, false);
-
+        lastStatusData = data;
         cachedNodeProjects = data.projects || [];
         cachedPythonProjects = data.pythonProjects || [];
+
         const sel = document.getElementById('new-cwd');
         if (sel.options.length === 0) {
           updateProjectList();
         }
 
-        const tbody = document.getElementById('proc-tbody');
-        tbody.innerHTML = data.processes.map(p => {
-          const isOnline = p.status === 'online';
-          const badgeClass = isOnline ? 'online' : (p.status === 'stopped' ? 'stopped' : 'errored');
-          const isPy = p.container === 'dev-python' || String(p.id).startsWith('py:');
-          const envBadge = isPy
-            ? `<span class="badge env-py">🐍 Python</span>`
-            : `<span class="badge env-node">🟢 Node.js</span>`;
-          const displayId = p.rawId !== undefined ? p.rawId : p.id;
-          return `
-            <tr>
-              <td><strong>#${displayId}</strong></td>
-              <td>${envBadge}</td>
-              <td>
-                <div class="proc-name">${p.name}</div>
-                <div class="proc-path">${p.script}</div>
-              </td>
-              <td><span class="badge ${badgeClass}"><span class="dot"></span>${p.status.toUpperCase()}</span></td>
-              <td>${p.pid || '-'}</td>
-              <td>${isOnline ? formatUptime(p.uptime, true) : '-'}</td>
-              <td>${p.restarts}</td>
-              <td>${p.cpu}%</td>
-              <td>${formatBytes(p.memory)}</td>
-              <td>
-                <div class="actions-cell">
-                  <button class="accent" onclick="openLogs('${p.id}', '${p.name}')">📜 Логи</button>
-                  <button onclick="pm2Action('restart', '${p.id}')">🔄 Рестарт</button>
-                  ${isOnline
-                    ? `<button onclick="pm2Action('stop', '${p.id}')">⏸ Стоп</button>`
-                    : `<button class="primary" onclick="pm2Action('start', '${p.id}')">▶ Старт</button>`
-                  }
-                  <button class="danger" onclick="confirmDelete('${p.id}', '${p.name}')">🗑</button>
-                </div>
-              </td>
-            </tr>
-          `;
-        }).join('');
+        renderStatus();
 
         if (currentLogId !== null) {
           fetchLogs(currentLogId);
@@ -438,6 +605,7 @@
     }
 
     function openModal() {
+      document.getElementById('new-container').value = activeContainer;
       updateProjectList();
       document.getElementById('create-modal').classList.add('open');
     }
@@ -457,6 +625,7 @@
       const data = await res.json();
       if (data.error) return alert('Ошибка: ' + data.error);
       closeModal();
+      selectContainer(container);
       fetchStatus();
     }
 
